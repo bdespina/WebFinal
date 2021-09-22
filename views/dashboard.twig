@@ -1,0 +1,546 @@
+{% extends 'layout.twig' %}
+
+
+{% block javascripts %}
+
+{% if isAdmin %}
+<script>
+  const days = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday'
+  ];
+  const hours = Array(25).fill().map((x, i) => i);
+
+  $(function () {
+    $.ajax({
+      url: '/total_users',
+      method: 'get'
+    }).then(function (response) {
+      $('.total-users').text(response.totalUsers);
+    }).catch(function (error) {
+      console.error(error);
+    });
+
+    $.ajax({
+      url: '/admin_stats',
+      method: 'get'
+    }).then(function (response) {
+      let methodRows = '';
+      for (o in response.stats.methods) {
+        methodRows += `<tr><td>${o}</td><td>${response.stats.methods[o]}</td></tr>`;
+      }
+      $('.methods-table').html(methodRows);
+
+      let statusRows = '';
+      for (o in response.stats.statuses) {
+        statusRows += `<tr><td>${o}</td><td>${response.stats.statuses[o]}</td></tr>`;
+      }
+      $('.statuses-table').html(statusRows);
+      $('.unique-domains').text(response.stats.domainsCount);
+      $('.unique-hosts').text(response.stats.geosCount);
+
+      const contentTypes = [];
+      let meanRows = '';
+      for (o in response.stats.meanAges) {
+        meanRows += `<tr><td>${o}</td><td>${response.stats.meanAges[o]}</td></tr>`;
+        contentTypes.push(o);
+      }
+      $('.means-table').html(meanRows);
+
+      // https://stackoverflow.com/questions/52098989/how-to-put-dynamic-colors-for-pie-chart-chart-js
+      function getRandomColor() {
+        var letters = '0123456789ABCDEF'.split('');
+        var color = '#';
+        for (var i = 0; i < 6; i++) {
+          color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+      }
+
+      const contentTypeDataSet = contentTypes.map((o) => {
+        let data = [];
+        response.stats.wait.forEach((w, i) => {
+          const startedDateTime = response.stats.startedDateTime[i];
+          const timestamp = Date.parse(startedDateTime);
+          const contentType = response.stats.contentTypes[i];
+          if (contentType === o) {
+            const hour = new Date(timestamp).getHours() + '';
+            const wait = w;
+            data.push({
+              hour,
+              wait
+            });
+          }
+        });
+
+        return {
+          label: o,
+          data,
+          parsing: {
+            xAxisKey: 'hour',
+            yAxisKey: 'wait'
+          },
+          backgroundColor: getRandomColor()
+        };
+      });
+
+      const ctx21 = document.querySelector('.chart-2-1').getContext('2d');
+      new Chart(ctx21, {
+        type: 'bar',
+        labels: 'Content-Type',
+        data: {
+          datasets: contentTypeDataSet
+        },
+        options: {
+          scales: {
+            x: {
+              stacked: true,
+            },
+            y: {
+              stacked: true
+            }
+          }
+        }
+      });
+
+      const dayOfWeekDataSet = days.map((o) => {
+        let data = [];
+        response.stats.wait.forEach((w, i) => {
+          const startedDateTime = response.stats.startedDateTime[i];
+          const timestamp = Date.parse(startedDateTime);
+          const day = days[new Date(timestamp).getDay()];
+          if (day === o) {
+            const hour = new Date(timestamp).getHours() + '';
+            const wait = w;
+            data.push({
+              hour,
+              wait
+            });
+          }
+        });
+
+        return {
+          label: o,
+          data,
+          parsing: {
+            xAxisKey: 'hour',
+            yAxisKey: 'wait'
+          },
+          backgroundColor: getRandomColor()
+        };
+      });
+
+      const ctx22 = document.querySelector('.chart-2-2').getContext('2d');
+      new Chart(ctx22, {
+        type: 'bar',
+        labels: 'Day of week',
+        data: {
+          datasets: dayOfWeekDataSet
+        },
+        options: {
+          scales: {
+            x: {
+              stacked: true,
+            },
+            y: {
+              stacked: true
+            }
+          }
+        }
+      });
+
+      const httpMethodsDataSet = Object.keys(response.stats.methods).map((o) => {
+        let data = [];
+        response.stats.wait.forEach((w, i) => {
+          const startedDateTime = response.stats.startedDateTime[i];
+          const timestamp = Date.parse(startedDateTime);
+          const day = days[new Date(timestamp).getDay()];
+          const methodName = response.stats.methodNames[i];
+          if (methodName === o) {
+            const hour = new Date(timestamp).getHours() + '';
+            const wait = w;
+            data.push({
+              hour,
+              wait
+            });
+          }
+        });
+
+        return {
+          label: o,
+          data,
+          parsing: {
+            xAxisKey: 'hour',
+            yAxisKey: 'wait'
+          },
+          backgroundColor: getRandomColor()
+        };
+      });
+
+      const ctx23 = document.querySelector('.chart-2-3').getContext('2d');
+      new Chart(ctx23, {
+        type: 'bar',
+        labels: 'HTTP methods',
+        data: {
+          datasets: httpMethodsDataSet
+        },
+        options: {
+          scales: {
+            x: {
+              stacked: true,
+            },
+            y: {
+              stacked: true
+            }
+          }
+        }
+      });
+
+      const serviceProviderDataSet = Object.keys(response.stats.geos).map((o) => {
+        let data = [];
+        response.stats.wait.forEach((w, i) => {
+          const startedDateTime = response.stats.startedDateTime[i];
+          const timestamp = Date.parse(startedDateTime);
+          const day = days[new Date(timestamp).getDay()];
+          const geo = response.stats.geosNames[i];
+          if (geo === o) {
+            const hour = new Date(timestamp).getHours() + '';
+            const wait = w;
+            data.push({
+              hour,
+              wait
+            });
+          }
+        });
+
+        return {
+          label: o,
+          data,
+          parsing: {
+            xAxisKey: 'hour',
+            yAxisKey: 'wait'
+          },
+          backgroundColor: getRandomColor()
+        };
+      });
+
+      const ctx24 = document.querySelector('.chart-2-4').getContext('2d');
+      new Chart(ctx24, {
+        type: 'bar',
+        labels: 'HTTP methods',
+        data: {
+          datasets: serviceProviderDataSet
+        },
+        options: {
+          scales: {
+            x: {
+              stacked: true,
+            },
+            y: {
+              stacked: true
+            }
+          }
+        }
+      });
+    }).catch(function (error) {
+      console.error(error);
+    });
+  });
+</script>
+{% else %}
+<script>
+  $(function () {
+    $('#har-download').on('change', function () {
+      const filename = $(this).val();
+      $('#har-download-form').find('input[name="filename"]').val(filename);
+      $('#har-download-form').submit();
+    });
+
+    $.ajax({
+      url: '/user_stats',
+      method: 'get'
+    }).then(function (response) {
+      if (response.status === 'error') {
+        $('.message').text(response.message);
+        return;
+      }
+
+      $('.latest-uploaded-har').text(response.lastUpload);
+      $('.total-har-records').text(response.totalRecords);
+
+      const data = {};
+      response.data.forEach(o => {
+        const key = `${o.latitude}-${o.longtitude}`;
+        if (!(key in data)) {
+          data[key] = {
+            count: 0,
+            lati: o.latitude,
+            lon: o.longtitude
+          };
+        }
+
+        data[key].count += 1;
+      });
+
+      const heatMapData = Object.keys(data).map(o => {
+        return {
+          lat: data[o].lati,
+          lng: data[o].lon,
+          count: data[o].count
+        };
+      });
+
+      let mymap = L.map('mapid');
+      let tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1,
+        accessToken: 'your.mapbox.access.token'
+      })
+      mymap.addLayer(tiles);
+      mymap.setView([38.2462420, 21.7350847], 1);
+
+      let cfg = {
+        // radius should be small ONLY if scaleRadius is true (or small radius is intended)
+        // if scaleRadius is false it will be the constant radius used in pixels
+        "radius": 70,
+        "maxOpacity": 1.0,
+        // scales the radius based on map zoom
+        "scaleRadius": false,
+        // if set to false the heatmap uses the global maximum for colorization
+        // if activated: uses the data maximum within the current map boundaries
+        //   (there will always be a red spot with useLocalExtremas true)
+        "useLocalExtrema": false,
+        // which field name in your data represents the latitude - default "lat"
+        latField: 'lat',
+        // which field name in your data represents the longitude - default "lng"
+        lngField: 'lng',
+        // which field name in your data represents the data value - default "value"
+        valueField: 'count'
+      };
+      let heatmapLayer = new HeatmapOverlay(cfg);
+      mymap.addLayer(heatmapLayer);
+      heatmapLayer.setData({
+        data: heatMapData
+      });
+    }).catch(function (error) {
+      console.error(error);
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}
+
+{% block body %}
+<br>
+{% if isAdmin %}
+
+<div class="container-fluid pb-5">
+  
+  <form class="form-container1">
+      <div class="row">
+        <div class="col">
+          <h1>Welcome to {{title}}!</h1>
+          <a href='/logout'>Logout</a>
+          <br><br><br>
+          <div>  
+            <h4>Statistics:</h4>
+            <p><b>Total number or registered users: <span class="total-users">-</span></b></p>
+          </div>
+          <div>
+            <table class="table table-striped table-dark">
+              <tr>
+                <th scope="col">Request Method</th>
+                <th scope="col">records</th>
+              </tr>
+              <tbody class="methods-table">
+              </tbody>
+            </table>
+          </div>
+          <br>
+          <div>
+            <table class="table table-striped table-dark">
+              <tr>
+                <th scope="col">Response Status</th>
+                <th scope="col">records</th>
+              </tr>
+              <tbody class="statuses-table">
+              </tbody>
+            </table>
+          </div>
+          <br>
+          <div>
+            <table class="table table-striped table-dark">
+              <tr>
+                <th scope="col">Unique Domains</th>
+                <th scope="col">Unique Hosts</th>
+              </tr>
+              <tr>
+                <td><span class="unique-domains">-</span></td>
+                <td><span class="unique-hosts">-</span></td>
+              </tr>
+            </table>
+          </div>
+          <br>
+        </div>  
+        <div class="col">
+          <table class="table table-striped table-dark">
+            <tr>
+              <th scope="col">Content-Type</th>
+              <th scope="col">Mean Age</th>
+            </tr>
+              <tbody class="means-table">
+              </tbody>
+          </table>
+        </div>
+      
+        <br>
+
+      
+        <br><br><br>
+        
+        <h4>Charts:</h4>
+        <div class="border border-info">
+          <canvas class="chart-2-1" width="800" height="400"></canvas>
+        </div>
+        <br><br>
+        <div class="border border-info">
+          <canvas class="chart-2-2" width="800" height="400"></canvas>
+        </div> 
+        <br><br>
+        <div class="border border-info">
+          <canvas class="chart-2-3" width="800" height="400"></canvas>
+        </div>
+        <br><br>
+        <div class="border border-info">
+          <canvas class="chart-2-4" width="800" height="400"></canvas>
+        </div> 
+      </div> 
+  </form>   
+</div>
+
+{% else %}
+
+<div class="container-fluid">
+  <form class="form-container2">
+    <div class="row">
+        <div class="col">
+          <h1>Welcome to {{title}}!</h1>
+
+          <a href='/logout'>Logout</a>
+          <br><br>
+          <h4>Your statistics:</h4>
+          <br>
+          <div class="message"></div>
+
+          <div>
+            <table class="table table-striped table-dark">
+              <tr>
+                <th scope="col">Latest uploaded HAR file</th>
+                <th scope="col">Total number or HAR records</th>
+              </tr>
+              <tr>
+                <td><span class="latest-uploaded-har">-</span></td>
+                <td><span class="total-har-records">-</span></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+  </form>
+</div>
+
+<div class="center">
+  <div>
+    <label>
+      <b>Upload HAR file:</b>
+      <form action='/har_upload' method='POST' enctype='multipart/form-data'>
+        <input type='file' name='har_upload'>
+        <input type='submit' value='Upload'>
+      </form>
+    </label>
+  </div>
+  <div>
+    <label>
+      <b>Download HAR file:</b>
+      <select id='har-download'>
+        <option disabled selected>Select a HAR file to download</option>
+        {% for file in files %}
+        <option name='{{ file }}'>{{ file }}</option>
+        {% endfor %}
+      </select>
+      <form id='har-download-form' action='/har_download' method='POST'>
+        <input name='filename' >
+      </form>
+    </label>
+  </div>
+</div>
+
+
+<div class="center2">       
+  <br><br>
+  <div class="row">
+  <div class="col">
+  <div class="form-group">
+    <label>
+      <h5>Change Username:</h5>
+      <form class='form' action='/update_username' method='POST'>
+        <div class="col-md-auto">
+          <input type='text' name='oldusername' placeholder='Old Username' class="form-control my-4 p-2" required>
+        </div>
+        <div class="col-md-auto">
+        <input type='text' name='newusername' placeholder='New Username' class="form-control my-4 p-2" required>
+      </div>
+        <div class="col-md-auto">
+        <input type='password' name='curpassword' placeholder='Current Password' class="form-control my-4 p-2" required>
+      </div>
+        <div class="col-md-auto">
+        <input type='submit' class="btn1 mt-4 mb-5" value='Submit'>
+      </div>
+      </form>
+    </label>
+  </div>
+</div>
+  
+  <div class="col">
+  <div class="form-group">
+    <label>
+      <h5>Change Password:</h5>
+      <form class='form' action='/update_password' method='POST'>
+        <div class="col-md-auto">
+        <input type='text' name='username' placeholder='Username' class="form-control my-3 p-2" required>
+      </div>
+        <div class="col-md-auto">
+        <input type='password' name='oldpassword' placeholder='Old Password' class="form-control my-3 p-2" required>
+      </div>
+        <div class="col-md-auto">
+        <input type='password' name='newpassword' placeholder='New Password' class="form-control my-3 p-2" required>
+      </div>
+        <div class="col-md-auto">
+        <input type='password' name='repnewpassword' placeholder='Repeat New Password' class="form-control my-3 p-2" required>
+      </div>
+        <input type='submit' class="btn1 mt-2 mb-5" value='Submit'>
+      </form>
+    </label>
+  </div>
+  </div>
+
+
+  <div class="col">
+      
+      <h5>Heatmap</h5>          
+      <div id="mapid"></div>
+    </div>   
+  </div>  
+</div>                  
+ 
+ 
+{% endif %}
+{% endblock %}
